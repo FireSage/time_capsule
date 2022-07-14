@@ -20,4 +20,4 @@ def get_processes():
 		if len(split_re) == 3 and split_re[2] != 'Id':
 			res_clean.append(split_re)
 
-print(res_clean)
+	print(res_clean)
