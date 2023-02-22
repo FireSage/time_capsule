@@ -1,67 +1,20 @@
-#ifndef WINDOW_CLASS_H
-#define WINDOW_CLASS_H
-
 #include <iostream>
 #include <string>
+#include <filesystem>
 #include <windows.h>
 #include <oleacc.h>
 #include <combaseapi.h>
 #include <psapi.h>
 #include <tchar.h>
-#include <filesystem>
 
-using std::string;
+#include "window.h"
 
-class Window{
-    HWND m_hwnd {};
-    string title {};
-    string M_application_name {};
-    std::filesystem::path filepath;
-    DWORD process_id {};
-    
-    public:
-        Window(HWND window);
-        string findProcessTitle(HWND window);
-        string findProcessFileName(HWND window);
-        std::filesystem::path getFilePath() const;
-        std::string getFileName() const;
-        DWORD getProcessId() const; 
-};
-
-class Session{
-    private:
-        struct session_data {
-            int64_t start_time;
-            int stop_time;
-            Window* window;
-        };
-             
-        typedef struct session_node{
-            session_data* data;
-
-            //next and previous elements
-            session_node* next;
-            session_node* previous;
-
-        }* session_nodePtr;
-
-        session_nodePtr head;
-        session_nodePtr tail;
-        session_nodePtr temp;
-
-    public:
-        Session();
-        void add(int64_t startTime, Window* wind);
-        void remove(Window* wind);
-};
-
-
-
-/*
-Window::Window(HWND window){
+Window::Window(HWND window) : m_hwnd(window){
     this->findProcessTitle(window);
     this->findProcessFileName(window);
 }
+
+
 string Window::findProcessTitle(HWND window){
     int length = GetWindowTextLength(window);
     
@@ -83,9 +36,11 @@ string Window::findProcessFileName(HWND window){
                   FALSE,
                   processBuffer
                 );
-    if (processHandle){
+    if (processHandle != nullptr){
         DWORD len = MAX_PATH;
-        char* filenameBuffer =  new char[1000];
+        // char* filenameBuffer =  new char[1000];
+        char filenameBuffer[MAX_PATH];
+        // if (GetModuleFileNameEx(processHandle, nullptr, buffer, MAX_PATH))
         if (GetProcessImageFileNameA(processHandle, filenameBuffer, 1000)){
             this->filepath = string(filenameBuffer);
             std::cout<<"Path: " << this->filepath.filename() << std::endl;
@@ -96,5 +51,41 @@ string Window::findProcessFileName(HWND window){
     }
     return this->filepath.filename().string();
 }
-*/
-#endif
+
+DWORD Window::getProcessId() const{
+    return this->process_id;
+}
+
+std::filesystem::path Window::getFilePath() const{
+    return this->filepath;
+}
+
+string Window::getFileName() const{
+    return this->filepath.filename().string();
+}
+
+// -----------------SESSION IMPLEMENTATION---------------------
+
+Session::Session(){
+    head = NULL;
+    tail = NULL;
+    temp = NULL;
+}
+void Session::add(int64_t startTime, Window *wind){
+    session_nodePtr node = new session_node;
+    node->next = NULL;
+    //set data
+    session_data* dat = new session_data;
+    dat->start_time = startTime;
+    dat->window = wind;
+    node->data = dat;
+
+    if(head == NULL){
+        head = node;
+        tail = node;
+    }else{
+        tail->next = node;
+        node->previous = tail;
+        tail = node; 
+    }
+}
