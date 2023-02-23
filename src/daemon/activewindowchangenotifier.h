@@ -4,13 +4,13 @@
 #include <windows.h>
 #include <functional>
 #include <vector>
-#include <window.h>
+// #include <window.h>
 
 class ActiveWindowChangeNotifier{
     HWINEVENTHOOK m_hook;
-    static std::vector<std::function<void (const Window&)>> m_listeners;
+    static std::vector<std::function<void(HWND)>> m_listeners;
 
-    static void HandleWindowChangeEvent(HWINEVENTHOOK hook, 
+    static void CALLBACK HandleWindowChangeEvent(HWINEVENTHOOK hook, 
                             DWORD event, 
                             HWND hwnd, 
                             LONG idObject, 
@@ -30,17 +30,20 @@ class ActiveWindowChangeNotifier{
             0, 0,              // Process and thread IDs of interest (0 = all)
             WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS // Flags.
         );
-
     }
 
     ~ActiveWindowChangeNotifier(){
-        UnhookWinEvent(m_hook)
+        UnhookWinEvent(m_hook);
     }
 
-    void addListener(const std:function<void(HWND)>& listener){
+    void addListener(const std::function<void(HWND)>& listener){
+        std::cout<<"Listening for window switch ... "<<std::endl;
         m_listeners.push_back(listener);
     }
 
 };
+
+std::vector<std::function<void(HWND)>> ActiveWindowChangeNotifier::m_listeners;
+
 
 #endif

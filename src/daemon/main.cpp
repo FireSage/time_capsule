@@ -7,11 +7,13 @@
 #include <chrono>
 #include <sys/time.h>
 #include "window.h"
+#include "activewindowchangenotifier.h"
 #include <unordered_map>
 
 // using namespace std;
 std::unordered_map<string, Window*> windows;
 Session session;
+
 
 HWINEVENTHOOK g_hook;
 using std::cout; using std::endl;
@@ -21,17 +23,30 @@ using std::chrono::seconds;
 using std::chrono::system_clock;
 
 
+//Get open windows
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam){
+    if(!IsWindowVisible(hwnd)){
+        return TRUE;
+    }
+    Window* window = new Window(hwnd);
+    
+    if(window->getTitle().empty()){
+        return TRUE;
+    } 
 
+    string key = std::to_string(window->getProcessId())+" - "+ window->getFileName() + " - "+ window->getTitle();
+    windows[key] = window;
+    // cout << "T1: " <<  key << std::endl;
     return TRUE;
 }
-void CALLBACK HandleWindowChangeEvent(HWINEVENTHOOK hook, 
-                            DWORD event, 
-                            HWND hwnd, 
-                            LONG idObject, 
-                            LONG idChild, 
-                            DWORD dwEventThread, 
-                            DWORD dwmsEventTime){
+// void CALLBACK HandleWindowChangeEvent(HWINEVENTHOOK hook, 
+//                             DWORD event, 
+//                             HWND hwnd, 
+//                             LONG idObject, 
+//                             LONG idChild, 
+//                             DWORD dwEventThread, 
+//                             DWORD dwmsEventTime){
+void CALLBACK WindowChangeHandler(HWND hwnd){ 
     auto nowTime = duration_cast<milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     std::time_t time_t_time = duration_cast<seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     std::cout << "now Time: " << nowTime << "   time_t: " << time_t_time << std::endl;
@@ -55,18 +70,18 @@ void CALLBACK HandleWindowChangeEvent(HWINEVENTHOOK hook,
     // std::cout << windowTitle << std::endl;
 }
 
-void subscribeToWindowChangeEvent(){
-    // CoInitialize(NULL);
+// void subscribeToWindowChangeEvent(){
+//     // CoInitialize(NULL);
 
-    g_hook = SetWinEventHook(
-        EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,  // Range of events (4 to 5).
-        NULL,                                          // Handle to DLL.
-        HandleWindowChangeEvent,                                // The callback.
-        0, 0,              // Process and thread IDs of interest (0 = all)
-        WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS // Flags.
-    );
-    std::cout<<"Listening for window switch ... "<<std::endl;
-} 
+//     g_hook = SetWinEventHook(
+//         EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,  // Range of events (4 to 5).
+//         NULL,                                          // Handle to DLL.
+//         HandleWindowChangeEvent,                                // The callback.
+//         0, 0,              // Process and thread IDs of interest (0 = all)
+//         WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS // Flags.
+//     );
+//     std::cout<<"Listening for window switch ... "<<std::endl;
+// } 
 
 
 void logActiveApp(string app){
@@ -87,9 +102,14 @@ int main(){
     // std::cout << windowTitle;
     // int integ = 0;
     // std::cout<<"Int size: "<< sizeof integ << std::endl;
+    ActiveWindowChangeNotifier* notifier = new ActiveWindowChangeNotifier();
     session = Session();
     EnumWindows(EnumWindowsProc, 0);
-    subscribeToWindowChangeEvent();
+    // subscribeToWindowChangeEvent();
+    notifier->addListener([](HWND hwnd){
+        WindowChangeHandler(hwnd);
+        
+    });
     // TODO:: listen for process end : GetProcessTimes()
     // TODO:: use EVENT_OBJECT_NAMECHANGE to listen for tab changes in chrome etc 
     // TODO:: Track open windows

@@ -10,25 +10,25 @@
 #include "window.h"
 
 Window::Window(HWND window) : m_hwnd(window){
-    this->findProcessTitle(window);
-    this->findProcessFileName(window);
+    this->findProcessTitle();
+    this->findProcessFileName();
 }
 
 
-string Window::findProcessTitle(HWND window){
-    int length = GetWindowTextLength(window);
+string Window::findProcessTitle(){
+    int length = GetWindowTextLength(this->m_hwnd);
     
     char* buffer = new char[length + 1];
-    if (GetWindowText(window, buffer, length + 1) > 0){
+    if (GetWindowText(this->m_hwnd, buffer, length + 1) > 0){
         this->title = string(buffer);
-        std::cout << this->title << std::endl;
+        // std::cout << this->title << std::endl;
     }
-     return this->title;
+    return this->title;
 }
 
-string Window::findProcessFileName(HWND window){
+string Window::findProcessFileName(){
     DWORD processBuffer;
-    GetWindowThreadProcessId(window, &processBuffer);
+    GetWindowThreadProcessId(this->m_hwnd, &processBuffer);
     this->process_id = processBuffer;
 
     HANDLE processHandle = OpenProcess(
@@ -43,7 +43,7 @@ string Window::findProcessFileName(HWND window){
         // if (GetModuleFileNameEx(processHandle, nullptr, buffer, MAX_PATH))
         if (GetProcessImageFileNameA(processHandle, filenameBuffer, 1000)){
             this->filepath = string(filenameBuffer);
-            std::cout<<"Path: " << this->filepath.filename() << std::endl;
+            // std::cout<<"Path: " << this->filepath.filename() << std::endl;
             // std::cout<<"Path: " << string(filenameBuffer)<<std::endl;
     //         // At this point, buffer contains the full path to the executable
         }
@@ -64,28 +64,40 @@ string Window::getFileName() const{
     return this->filepath.filename().string();
 }
 
+string Window::getTitle() const{
+    return this->title;
+}
+
 // -----------------SESSION IMPLEMENTATION---------------------
 
 Session::Session(){
-    head = NULL;
-    tail = NULL;
-    temp = NULL;
+    WriteQueue = {};
+    // head = NULL;
+    // tail = NULL;
+    // temp = NULL;
 }
+
 void Session::add(int64_t startTime, Window *wind){
-    session_nodePtr node = new session_node;
-    node->next = NULL;
-    //set data
     session_data* dat = new session_data;
     dat->start_time = startTime;
     dat->window = wind;
-    node->data = dat;
-
-    if(head == NULL){
-        head = node;
-        tail = node;
-    }else{
-        tail->next = node;
-        node->previous = tail;
-        tail = node; 
-    }
+    this->WriteQueue.push_back(dat);
 }
+// void Session::add(int64_t startTime, Window *wind){
+//     session_nodePtr node = new session_node;
+//     node->next = NULL;
+//     //set data
+//     session_data* dat = new session_data;
+//     dat->start_time = startTime;
+//     dat->window = wind;
+//     node->data = dat;
+
+//     if(head == NULL){
+//         head = node;
+//         tail = node;
+//     }else{
+//         tail->next = node;
+//         node->previous = tail;
+//         tail = node; 
+//     }
+// }
